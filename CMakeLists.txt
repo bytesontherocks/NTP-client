@@ -1,7 +1,15 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.10)
+
 project(ntp_client)
 
-set(CMAKE_CXX_STANDARD 14)
+find_package(glog CONFIG REQUIRED)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+
+find_package(glog REQUIRED)
 
 file(GLOB_RECURSE SOURCES src/*.cpp include/*.h*)
 include_directories(include)
@@ -9,13 +17,12 @@ include_directories(include)
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
 add_executable(ntp_example main.cpp)
-target_link_libraries(ntp_example ${PROJECT_NAME})
+target_link_libraries(ntp_example ${PROJECT_NAME} glog::glog)
 
 if (WIN32)
     target_link_libraries(${PROJECT_NAME} ws2_32)
 endif()
 
-# Instalación
 INSTALL(TARGETS ${PROJECT_NAME}
         LIBRARY
         DESTINATION bin)
