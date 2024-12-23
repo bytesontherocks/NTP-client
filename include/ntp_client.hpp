@@ -45,8 +45,6 @@ public:
     };
 };
 
-
-
 struct SocketInfo
 {
     Socket socket_fd;
@@ -67,15 +65,19 @@ public:
 private:
     std::string hostname_;
     uint16_t port_;
-    SocketInfo si_;
+    SocketInfo si_{-1, {}};// initisalize socket_fd to -1 as invalid socket
 };
 
 
 
-class NTPClientApi //: public INtpClient
+class NTPClientApi
 {
 public:
-    explicit NTPClientApi(const std::string hostname, const uint16_t port) : ntp_client(hostname, port){};
+    // p_ntp_client allows to inject a mock object for testing
+    explicit NTPClientApi(const std::string hostname, const uint16_t port, INtpClient* const p_ntp_client=nullptr) : ntp_client(hostname, port){
+        if (p_ntp_client != nullptr) ntp_client_ = p_ntp_client;
+        else ntp_client_ = &ntp_client;
+    };
     ~NTPClientApi();
 
     /**
@@ -87,6 +89,7 @@ public:
     std::expected<uint32_t, std::string> request_time();
 
 private:    
+    INtpClient* ntp_client_;
     NtpClient ntp_client;
 };
 

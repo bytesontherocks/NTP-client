@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 
         if (!maybe_time.has_value())
         {    
-            std::cout << "Error: " << maybe_time.error() << "\n";
+            std::cerr << maybe_time.error() << "\n";
             return EXIT_FAILURE;
         }
 

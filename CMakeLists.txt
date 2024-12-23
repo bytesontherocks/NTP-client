@@ -2,14 +2,11 @@ cmake_minimum_required(VERSION 3.10)
 
 project(ntp_client)
 
-find_package(glog CONFIG REQUIRED)
-
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-
-find_package(glog REQUIRED)
+find_package(glog CONFIG REQUIRED)
 
 file(GLOB_RECURSE SOURCES src/*.cpp include/*.h*)
 include_directories(include)
@@ -33,3 +30,10 @@ install(DIRECTORY "include/"
     PATTERN "*.h"
     PATTERN "*.hpp"
 )
+
+enable_testing()
+    
+find_package(GTest CONFIG REQUIRED)
+# target_link_libraries(main PRIVATE GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
+
+# add_test(AllTestsInMain main)

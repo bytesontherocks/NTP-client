@@ -40,18 +40,19 @@ NTPClientApi::~NTPClientApi()
 {
 }
 
+
 std::expected<uint32_t, std::string> NTPClientApi::request_time()
 {
-    return ntp_client.createConnection().and_then([&]() -> std::expected<void, std::string> {
-        const auto maybe_packet = ntp_client.sendRequest();
+    return ntp_client_->createConnection().and_then([&]() -> std::expected<void, std::string> {
+        const auto maybe_packet = ntp_client_->sendRequest();
         if (!maybe_packet.has_value()) return std::unexpected("Error: writing to socket");
         else return {};
     }).and_then([&]() -> std::expected<uint32_t, std::string> {
-        const auto maybe_abs_seconds = ntp_client.receiveResponse();        
+        const auto maybe_abs_seconds = ntp_client_->receiveResponse();        
         if (!maybe_abs_seconds.has_value()) return std::unexpected("Error: reading from socket");        
         else return maybe_abs_seconds.value();
     }).or_else([&](const std::string err) -> std::expected<uint32_t, std::string> {        
-        auto e = ntp_client.cleanupConnection();
+        auto e = ntp_client_->cleanupConnection();
         if (!e.has_value()) return std::unexpected("Error: closing socket");
         else return std::unexpected(err);
     });
@@ -72,7 +73,6 @@ std::expected<void, std::string> NtpClient::createConnection()
     // Creating socket file descriptor
     if ((si_.socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
-        std::cerr << "Socket creation failed\n";
         return std::unexpected("Error: Socket creation failed");
     }
 
@@ -153,7 +153,7 @@ std::expected<std::uint32_t, std::string> NtpClient::receiveResponse()
 
 std::expected<void, std::string> NtpClient::cleanupConnection()
 {
-    if (si_.socket_fd != -1)
+    if (-1 != si_.socket_fd)
     {
         if (0 != close(si_.socket_fd)) return std::unexpected("Error: closing socket");
         si_.socket_fd = -1;
