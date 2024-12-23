@@ -23,14 +23,14 @@ int main(int argc, char *argv[])
    
     NTPClientApi client{"0.pool.ntp.org", 123U};
 
-    auto epoch_server_s = client.request_time();
+    const auto maybe_time = client.request_time();
 
-    if (0 == epoch_server_s)
+    if (!maybe_time.has_value())
         return EXIT_FAILURE;
 
     // The function ctime receives the timestamps in seconds.
-    time_t epoch_server = (uint32_t)(epoch_server_s);
-
+    time_t epoch_server = maybe_time.value();
+    
     std::cout << "Server time: " << ctime(&epoch_server);
     std::cout << "Timestamp server: " << (uint32_t)epoch_server << "\n\n";
 

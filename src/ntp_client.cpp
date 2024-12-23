@@ -44,39 +44,6 @@ NTPClientApi::NTPClientApi(const std::string hostname, const uint16_t port) : ho
 #endif
 }
 
-
-std::expected<void, std::string> NTPClientApi::build_connection()
-{
-    // Creating socket file descriptor
-    if ((socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-    {
-        std::cerr << "Socket creation failed\n";
-        return std::unexpected("Error: Socket creation failed");
-    }
-
-    memset(&socket_client, 0, sizeof(socket_client));
-    std::string ntp_server_ip = hostname_to_ip(hostname_);
-
-    std::cout << "Creating socket with: " << ntp_server_ip << "\n";
-
-#ifdef _WIN32
-    DWORD timeout_sec = 1; // timeout in seconds
-    DWORD timeout_time_value = timeout_sec * 1000;
-    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_time_value, sizeof(timeout_time_value));
-#else
-    timeval timeout_time_value{};
-    timeout_time_value.tv_sec = 1; // timeout in seconds
-    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_time_value, sizeof(timeout_time_value));
-#endif
-
-    // Filling server information
-    socket_client.sin_family = AF_INET;
-    socket_client.sin_port = htons(port_);
-    socket_client.sin_addr.s_addr = inet_addr(ntp_server_ip.c_str());
-
-    return {};
-}
-
 NTPClientApi::~NTPClientApi()
 {
     close_socket();
@@ -86,30 +53,17 @@ NTPClientApi::~NTPClientApi()
 #endif
 }
 
-uint64_t NTPClientApi::request_time()
+std::expected<uint32_t, std::string> NTPClientApi::request_time()
 {
-    const auto maybe_time = ntp_client.createConnection().and_then([&](const auto si) -> std::expected<SocketInfo, std::string> {
-
+    return ntp_client.createConnection().and_then([&](const auto si) -> std::expected<SocketInfo, std::string> {
         const auto maybe_packet = ntp_client.sendRequest(si);
-        if (!maybe_packet.has_value())
-        {
-            return std::unexpected("Error: writing to socket");
-        }
-        return si;
-
+        if (!maybe_packet.has_value()) return std::unexpected("Error: writing to socket");
+        else return si;
     }).and_then([&](const auto si) -> std::expected<uint32_t, std::string> {
-
-        const auto maybe_abs_seconds = ntp_client.receiveResponse(si);
-        if (!maybe_abs_seconds.has_value())
-        {
-            close_socket();// TODO: review
-            return std::unexpected("Error: writing to socket");
-        }
-
-        return maybe_abs_seconds.value();
+        const auto maybe_abs_seconds = ntp_client.receiveResponse(si);        
+        if (!maybe_abs_seconds.has_value()) return std::unexpected("Error: reading from socket");        
+        else return maybe_abs_seconds.value();
     });
-    
-    return maybe_time.has_value() ? maybe_time.value() : 0;
 }
 
 void NTPClientApi::close_socket()

@@ -93,13 +93,11 @@ public:
    * @brief Transmits an NTP request to the defined server and returns the
    * timestamp
    *
-   * @return (uint64_t) the number of seconds since 1970. Return 0 if fail. 
+   * @return std::expected<uint32_t, std::string> the number of seconds since 1970. Return Error in string if fail. 
    */
-    uint64_t request_time();
+    std::expected<uint32_t, std::string> request_time();
 
 private:
-    /// @brief Build the connection. Set all the params for the socket_client.
-    std::expected<void, std::string> build_connection();
 
     /// @brief Close the connection. Set -1 to socket_fd. 
     void close_socket();
