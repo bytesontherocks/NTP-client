@@ -88,37 +88,28 @@ NTPClientApi::~NTPClientApi()
 
 uint64_t NTPClientApi::request_time()
 {
-    const auto maybe_si = ntp_client.createConnection();
+    const auto maybe_time = ntp_client.createConnection().and_then([&](const auto si) -> std::expected<SocketInfo, std::string> {
 
-    if (!maybe_si.has_value())
-    {
-        std::cerr << "Error: " << maybe_si.error() << "\n";
-        return 0;
-    }   
+        const auto maybe_packet = ntp_client.sendRequest(si);
+        if (!maybe_packet.has_value())
+        {
+            return std::unexpected("Error: writing to socket");
+        }
+        return si;
 
-    const auto si = maybe_si.value();
+    }).and_then([&](const auto si) -> std::expected<uint32_t, std::string> {
 
-    const auto maybe_packet = ntp_client.sendRequest(si);
+        const auto maybe_abs_seconds = ntp_client.receiveResponse(si);
+        if (!maybe_abs_seconds.has_value())
+        {
+            close_socket();// TODO: review
+            return std::unexpected("Error: writing to socket");
+        }
 
-     if (!maybe_packet.has_value())
-    {
-        std::cerr << "ERROR writing to socket\n";
-        return 0;
-    }
-
-    auto packet = maybe_packet.value();
-
-    const auto maybe_abs_seconds = ntp_client.receiveResponse(si);
-
-    if (!maybe_abs_seconds.has_value())
-    {
-        std::cerr << "ERROR reading from socket\n";
-        close_socket();
-        return 0;
-    }
-
-    const auto s = maybe_abs_seconds.value();
-    return s;
+        return maybe_abs_seconds.value();
+    });
+    
+    return maybe_time.has_value() ? maybe_time.value() : 0;
 }
 
 void NTPClientApi::close_socket()
