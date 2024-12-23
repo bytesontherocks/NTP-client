@@ -44,6 +44,7 @@ NTPClientApi::NTPClientApi(const std::string hostname, const uint16_t port) : ho
 #endif
 }
 
+
 std::expected<void, std::string> NTPClientApi::build_connection()
 {
     // Creating socket file descriptor
@@ -54,7 +55,6 @@ std::expected<void, std::string> NTPClientApi::build_connection()
     }
 
     memset(&socket_client, 0, sizeof(socket_client));
-
     std::string ntp_server_ip = hostname_to_ip(hostname_);
 
     std::cout << "Creating socket with: " << ntp_server_ip << "\n";
@@ -130,8 +130,6 @@ void NTPClientApi::close_socket()
     }
 }
 
-
-
 NTPClient::NTPClient(const std::string host, const uint16_t port) : hostname_(host), port_(port)
 {
 }
@@ -151,17 +149,15 @@ std::expected<SocketInfo, std::string> NTPClient::createConnection()
 
     std::string ntp_server_ip = hostname_to_ip(hostname_);
 
-    std::cout << "Creating socket with: " << ntp_server_ip << "\n";
+    std::cout << "NTP server IP: " << ntp_server_ip << "\n";
 
 #ifdef _WIN32
-    DWORD timeout_sec = 1; // timeout in seconds
-    DWORD timeout_time_value = timeout_sec * 1000;
-    setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_time_value, sizeof(timeout_time_value));
+    DWORD timeout_time_value =1000;// timeout in 1 second in ms
 #else
-    timeval timeout_time_value{};
-    timeout_time_value.tv_sec = 1; // timeout in seconds
-    setsockopt(si.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_time_value, sizeof(timeout_time_value));
+    timeval timeout_time_value{1, 0};// timeout in 1 seconds + 0us
 #endif
+
+    setsockopt(si.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_time_value, sizeof(timeout_time_value));
 
     // Filling server information
     si.socket_client.sin_family = AF_INET;
@@ -197,6 +193,7 @@ std::expected<NtpPacket, std::string> NTPClient::sendRequest(const SocketInfo& s
         return packet;
     }
 }
+
 std::expected<std::uint32_t, std::string> NTPClient::receiveResponse(const SocketInfo& si)
 {
     NtpPacket packet = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

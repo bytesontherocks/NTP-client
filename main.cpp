@@ -7,19 +7,21 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc < 3)
-    {
-        std::cout << "Usage: " << argv[0] << " \"Address of NTP server pool\" \"port\" \n";
+    // if (argc < 3)
+    // {
+    //     std::cout << "Usage: " << argv[0] << " \"Address of NTP server pool\" \"port\" \n";
 
-        std::cout << "Example: \n\t";
-        std::cout << argv[0] << " 0.pool.ntp.org 123\n";
+    //     std::cout << "Example: \n\t";
+    //     std::cout << argv[0] << " 0.pool.ntp.org 123\n";
 
-        return EXIT_FAILURE;
-    }
+    //     return EXIT_FAILURE;
+    // }
 
-    uint16_t port = std::stoi(argv[2]);
+    // uint16_t port = std::stoi(argv[2]);
 
-    NTPClientApi client{argv[1], port};
+    //NTPClientApi client{argv[1], port};
+   
+    NTPClientApi client{"0.pool.ntp.org", 123U};
 
     auto epoch_server_s = client.request_time();
 
