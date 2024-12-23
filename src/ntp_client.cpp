@@ -19,13 +19,13 @@
 
 namespace {
     /// @brief Delta between epoch time and ntp time
-    static constexpr unsigned long long NTP_TIMESTAMP_DELTA{2208988800ull};
+    constexpr std::uint32_t NTP_TIMESTAMP_DELTA{2208988800U};
 
     /**
      * @brief Converts from hostname to ip address
      * 
      * @param hostname name of the host.
-     * @return ip address. Return empty string if coun't find the ip.
+     * @return ip address. Return empty string if no IP found.
      */
     std::string hostname_to_ip(const std::string& host)
     {
@@ -36,64 +36,48 @@ namespace {
     }
 }
 
-NTPClientApi::NTPClientApi(const std::string hostname, const uint16_t port) : hostname_(hostname), port_(port), ntp_client(hostname, port)
-{
-#ifdef _WIN32
-    WSADATA wsaData = { 0 };
-    (void)WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-}
-
 NTPClientApi::~NTPClientApi()
 {
-    close_socket();
-
-#ifdef _WIN32
-    WSACleanup();
-#endif
 }
 
 std::expected<uint32_t, std::string> NTPClientApi::request_time()
 {
-    return ntp_client.createConnection().and_then([&](const auto si) -> std::expected<SocketInfo, std::string> {
-        const auto maybe_packet = ntp_client.sendRequest(si);
+    return ntp_client.createConnection().and_then([&]() -> std::expected<void, std::string> {
+        const auto maybe_packet = ntp_client.sendRequest();
         if (!maybe_packet.has_value()) return std::unexpected("Error: writing to socket");
-        else return si;
-    }).and_then([&](const auto si) -> std::expected<uint32_t, std::string> {
-        const auto maybe_abs_seconds = ntp_client.receiveResponse(si);        
+        else return {};
+    }).and_then([&]() -> std::expected<uint32_t, std::string> {
+        const auto maybe_abs_seconds = ntp_client.receiveResponse();        
         if (!maybe_abs_seconds.has_value()) return std::unexpected("Error: reading from socket");        
         else return maybe_abs_seconds.value();
+    }).or_else([&](const std::string err) -> std::expected<uint32_t, std::string> {        
+        auto e = ntp_client.cleanupConnection();
+        if (!e.has_value()) return std::unexpected("Error: closing socket");
+        else return std::unexpected(err);
     });
 }
 
-void NTPClientApi::close_socket()
+NtpClient::~NtpClient()
 {
-    if (socket_fd != -1)
-    {
-        close(socket_fd);
-        socket_fd = -1;
-    }
+    cleanupConnection();
 }
 
-NTPClient::NTPClient(const std::string host, const uint16_t port) : hostname_(host), port_(port)
-{
-}
-
-std::expected<SocketInfo, std::string> NTPClient::createConnection()
+std::expected<void, std::string> NtpClient::createConnection()
 {   
-    auto si = SocketInfo{};
+    #ifdef _WIN32
+    WSADATA wsaData = { 0 };
+    if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) return std::unexpected("Error: WSAStartup failed");
+    #endif
     
     // Creating socket file descriptor
-    if ((si.socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if ((si_.socket_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
         std::cerr << "Socket creation failed\n";
         return std::unexpected("Error: Socket creation failed");
     }
 
-    memset(&si.socket_client, 0, sizeof(si.socket_client));
-
+    memset(&si_.socket_client, 0, sizeof(si_.socket_client));
     std::string ntp_server_ip = hostname_to_ip(hostname_);
-
     std::cout << "NTP server IP: " << ntp_server_ip << "\n";
 
 #ifdef _WIN32
@@ -102,60 +86,47 @@ std::expected<SocketInfo, std::string> NTPClient::createConnection()
     timeval timeout_time_value{1, 0};// timeout in 1 seconds + 0us
 #endif
 
-    setsockopt(si.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_time_value, sizeof(timeout_time_value));
+    setsockopt(si_.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_time_value, sizeof(timeout_time_value));
 
     // Filling server information
-    si.socket_client.sin_family = AF_INET;
-    si.socket_client.sin_port = htons(port_);
-    si.socket_client.sin_addr.s_addr = inet_addr(ntp_server_ip.c_str());
+    si_.socket_client.sin_family = AF_INET;
+    si_.socket_client.sin_port = htons(port_);
+    si_.socket_client.sin_addr.s_addr = inet_addr(ntp_server_ip.c_str());
 
-    std::cout << "Connecting\n";
-    if (connect(si.socket_fd, (struct sockaddr *)&si.socket_client, sizeof(si.socket_client)) < 0)
+    if (connect(si_.socket_fd, (struct sockaddr *)&si_.socket_client, sizeof(si_.socket_client)) < 0)
     {
         return std::unexpected("Error: Socket creation failed");
     }
 
-    return si;
+    return {};
 }
 
-std::expected<NtpPacket, std::string> NTPClient::sendRequest(const SocketInfo& si)
+std::expected<void, std::string> NtpClient::sendRequest()
 {
-    NtpPacket packet = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    packet.li_vn_mode = 0x1b;
+    NtpPacket packet = NtpPacketFactory{}.getPacket();
 
-    std::cout << "Sending request\n";
     #ifdef _WIN32
-        const auto sending_error = sendto(si.socket_fd, (char*)&packet, sizeof(NtpPacket), 0, (struct sockaddr*)&si.socket_client, sizeof(si.socket_client));
+        const auto sending_error = sendto(si_.socket_fd, (char*)&packet, sizeof(NtpPacket), 0, (struct sockaddr*)&si_.socket_client, sizeof(si_.socket_client));
     #else
-        const auto sending_error = write(si.socket_fd, (char*)&packet, sizeof(NtpPacket));
+        const auto sending_error = write(si_.socket_fd, (char*)&packet, sizeof(NtpPacket));
     #endif
 
-    if (sending_error < 0)
-    {
-        std::cerr << "ERROR writing to socket\n";
-        return std::unexpected("Error: writing to socket");
-    } else {
-        return packet;
-    }
+    if (sending_error < 0) return std::unexpected("Error: writing to socket");
+    else return {};
 }
 
-std::expected<std::uint32_t, std::string> NTPClient::receiveResponse(const SocketInfo& si)
+std::expected<std::uint32_t, std::string> NtpClient::receiveResponse()
 {
-    NtpPacket packet = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    packet.li_vn_mode = 0x1b;
+    NtpPacket packet = NtpPacketFactory{}.getPacket();
 
-    std::cout << "Reading request\n";
     #ifdef _WIN32
-        const auto reading_error = recv(si.socket_fd, (char*)&packet, sizeof(NtpPacket), 0);
+        const auto reading_error = recv(si_.socket_fd, (char*)&packet, sizeof(NtpPacket), 0);
     #else
-        const auto reading_error = read(si.socket_fd, (char*)&packet, sizeof(NtpPacket));
+        const auto reading_error = read(si_.socket_fd, (char*)&packet, sizeof(NtpPacket));
     #endif
 
-    if (reading_error < 0)
-    {
-        std::cerr << "ERROR reading from socket\n";
-        return std::unexpected("Error: reading from socket");
-    } else {
+    if (reading_error < 0) return std::unexpected("Error: reading from socket");
+    else {
         
         // These two fields contain the time-stamp seconds as the packet left the NTP
         // server. The number of seconds correspond to the seconds passed since 1900.
@@ -178,4 +149,19 @@ std::expected<std::uint32_t, std::string> NTPClient::receiveResponse(const Socke
 
         return txTm;
     }   
+}
+
+std::expected<void, std::string> NtpClient::cleanupConnection()
+{
+    if (si_.socket_fd != -1)
+    {
+        if (0 != close(si_.socket_fd)) return std::unexpected("Error: closing socket");
+        si_.socket_fd = -1;
+    }
+
+    #ifdef _WIN32
+    WSACleanup();
+    #endif
+
+    return {};
 }

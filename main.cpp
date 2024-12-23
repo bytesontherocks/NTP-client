@@ -4,6 +4,8 @@
 #include <iomanip>
 
 #include "time.h"
+#include <thread>
+#include <chrono>
 
 int main(int argc, char *argv[])
 {
@@ -23,21 +25,30 @@ int main(int argc, char *argv[])
    
     NTPClientApi client{"0.pool.ntp.org", 123U};
 
-    const auto maybe_time = client.request_time();
+    while(1)
+    {
+        const auto maybe_time = client.request_time();
 
-    if (!maybe_time.has_value())
-        return EXIT_FAILURE;
+        if (!maybe_time.has_value())
+        {    
+            std::cout << "Error: " << maybe_time.error() << "\n";
+            return EXIT_FAILURE;
+        }
 
-    // The function ctime receives the timestamps in seconds.
-    time_t epoch_server = maybe_time.value();
+        // The function ctime receives the timestamps in seconds.
+        time_t epoch_server = maybe_time.value();
+
+        std::cout << "Server time: " << ctime(&epoch_server);
+        std::cout << "Timestamp server: " << (uint32_t)epoch_server << "\n\n";
+
+        time_t local_time;
+        local_time = time(0);
+
+        std::cout << "System time is " << (epoch_server - local_time) << " seconds off\n";
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
     
-    std::cout << "Server time: " << ctime(&epoch_server);
-    std::cout << "Timestamp server: " << (uint32_t)epoch_server << "\n\n";
-
-    time_t local_time;
-    local_time = time(0);
-
-    std::cout << "System time is " << (epoch_server - local_time) << " seconds off\n";
 
     return EXIT_SUCCESS;
 }
