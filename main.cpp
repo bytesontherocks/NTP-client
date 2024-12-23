@@ -21,13 +21,13 @@ int main(int argc, char *argv[])
 
     NTPClientApi client{argv[1], port};
 
-    auto epoch_server_ms = client.request_time();
+    auto epoch_server_s = client.request_time();
 
-    if (0 == epoch_server_ms)
+    if (0 == epoch_server_s)
         return EXIT_FAILURE;
 
     // The function ctime receives the timestamps in seconds.
-    time_t epoch_server = (uint32_t)(epoch_server_ms / 1000);
+    time_t epoch_server = (uint32_t)(epoch_server_s);
 
     std::cout << "Server time: " << ctime(&epoch_server);
     std::cout << "Timestamp server: " << (uint32_t)epoch_server << "\n\n";

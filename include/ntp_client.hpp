@@ -54,10 +54,10 @@ struct NtpPacket
     uint32_t received_timestamp_sec_frac;
 
     // 32 bits and the most important field the client cares about. Transmit time-stamp seconds.
-    uint32_t transmited_timestamp_sec;
+    uint32_t transmitted_timestamp_sec;
 
     // 32 bits. Transmit time-stamp fraction of a second.
-    uint32_t transmited_timestamp_sec_frac;
+    uint32_t transmitted_timestamp_sec_frac;
 };
 
 
@@ -74,7 +74,7 @@ public:
     explicit NTPClient(const std::string host, const uint16_t port);
     std::expected<SocketInfo, std::string> createConnection() override;
     std::expected<NtpPacket, std::string> sendRequest(const SocketInfo& si) override;
-    std::expected<NtpPacket, std::string> receiveResponse(const SocketInfo& si) override;
+    std::expected<std::uint32_t, std::string> receiveResponse(const SocketInfo& si) override;
 
 private:
     std::string hostname_;
@@ -93,7 +93,7 @@ public:
    * @brief Transmits an NTP request to the defined server and returns the
    * timestamp
    *
-   * @return (uint64_t) the number of milliseconds since 1970. Return 0 if fail. 
+   * @return (uint64_t) the number of seconds since 1970. Return 0 if fail. 
    */
     uint64_t request_time();
 
