@@ -9,21 +9,29 @@
 
 int main(int argc, char *argv[])
 {
-    // if (argc < 3)
-    // {
-    //     std::cout << "Usage: " << argv[0] << " \"Address of NTP server pool\" \"port\" \n";
+    constexpr char default_ntp_domain[]{"0.pool.ntp.org"};
+    constexpr uint16_t default_ntp_port{123U};
 
-    //     std::cout << "Example: \n\t";
-    //     std::cout << argv[0] << " 0.pool.ntp.org 123\n";
+    std::string ntp_domain{default_ntp_domain}; 
+    uint16_t ntp_port{default_ntp_port};    
 
-    //     return EXIT_FAILURE;
-    // }
-
-    // uint16_t port = std::stoi(argv[2]);
-
-    //NTPClientApi client{argv[1], port};
+    if (argc < 3)
+    {
+        std::cout << "Using default NTP server {" << default_ntp_domain << "} and port {" << default_ntp_port << "}\n";
+        std::cout << "User can provide specific ones using args: " << argv[0] << " \"Address of NTP server pool\" \"port\" \n";
+    } else {
+        ntp_domain = argv[1];
+        char* p;
+        const auto res = std::strtol(argv[2], &p, 10);
+        if (*p != '\0' || res < 0 || res > std::numeric_limits<uint16_t>::max())
+        {
+            std::cerr << "Invalid port number. It needs to be uint16_t\n";
+            return EXIT_FAILURE;
+        }
+        ntp_port =res;
+    }
    
-    NTPClientApi client{"0.pool.ntp.org", 123U};
+    NTPClientApi client{ntp_domain, ntp_port};
 
     while(1)
     {
