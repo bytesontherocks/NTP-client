@@ -13,6 +13,8 @@ cd vcpkg
 # from root of project you are working on 
 vcpkg new --application
 vcpkg add port glog
+vcpkg add port gtest
+vcpkg install
 
 # add in ~/.bashrc
 export VCPKG_ROOT=/home/bytes/repos/vcpkg

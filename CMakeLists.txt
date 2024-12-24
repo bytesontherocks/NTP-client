@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(ntp_client)
+project(ntp_client_lib)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,6 +16,8 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES})
 add_executable(ntp_example main.cpp)
 target_link_libraries(ntp_example ${PROJECT_NAME} glog::glog)
 
+add_subdirectory(test)
+
 if (WIN32)
     target_link_libraries(${PROJECT_NAME} ws2_32)
 endif()
@@ -30,10 +32,3 @@ install(DIRECTORY "include/"
     PATTERN "*.h"
     PATTERN "*.hpp"
 )
-
-enable_testing()
-    
-find_package(GTest CONFIG REQUIRED)
-# target_link_libraries(main PRIVATE GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
-
-# add_test(AllTestsInMain main)

@@ -1,6 +1,6 @@
 #pragma once 
 
-#include <string>
+
 #ifdef _WIN32
 #include <WinSock2.h>
 using Socket = SOCKET;
@@ -9,6 +9,7 @@ using Socket = SOCKET;
 using Socket = int;
 #endif
 #include <expected>
+#include <string>
 #include "INtpClient.hpp"
 
 struct NtpPacket
@@ -66,31 +67,6 @@ private:
     std::string hostname_;
     uint16_t port_;
     SocketInfo si_{-1, {}};// initisalize socket_fd to -1 as invalid socket
-};
-
-
-
-class NTPClientApi
-{
-public:
-    // p_ntp_client allows to inject a mock object for testing
-    explicit NTPClientApi(const std::string hostname, const uint16_t port, INtpClient* const p_ntp_client=nullptr) : ntp_client(hostname, port){
-        if (p_ntp_client != nullptr) ntp_client_ = p_ntp_client;
-        else ntp_client_ = &ntp_client;
-    };
-    ~NTPClientApi();
-
-    /**
-   * @brief Transmits an NTP request to the defined server and returns the
-   * timestamp
-   *
-   * @return std::expected<uint32_t, std::string> the number of seconds since 1970. Return Error in string if fail. 
-   */
-    std::expected<uint32_t, std::string> request_time();
-
-private:    
-    INtpClient* ntp_client_;
-    NtpClient ntp_client;
 };
 
 

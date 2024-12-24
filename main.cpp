@@ -1,4 +1,4 @@
-#include "ntp_client.hpp"
+#include "ntp_client_api.hpp"
 
 #include <iostream>
 #include <iomanip>
